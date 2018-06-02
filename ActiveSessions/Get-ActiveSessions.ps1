@@ -3,7 +3,7 @@
     Returns open sessions of a remote or local workstations
 .DESCRIPTION
     Get-ActiveSessions uses the command line tool qwinsta to retrieve all open user sessions on a computer regardless of how they are connected.
-.PARAMETER $ComputerName
+.PARAMETER $Name
     The name of the computer that you would like to know who is logged into.
 .EXAMPLE
     Get-ActiveSessions PC1
@@ -14,7 +14,7 @@
 
     This will go through each and every computer that has a name like "IT*" and return the users that are logged into it.
 .INPUTS
-    [string[]]$ComputerName
+    [string[]]$Name
 .OUTPUTS
     A custom object with the following members:
         UserName: [string]
@@ -33,10 +33,11 @@ Function Get-ActiveSessions{
     Param(
         [Parameter(
             Mandatory = $true,
-            ValueFromPipeline = $true
+            ValueFromPipeline = $true,
+			ValueFromPipelineByPropertyName = $true
         )]
         [ValidateNotNullOrEmpty()]
-        [string]$ComputerName
+        [string]$Name
         ,
         [switch]$Quiet
     )
@@ -44,15 +45,15 @@ Function Get-ActiveSessions{
         $return = @()
     }
     Process{
-        If(!(Test-Connection $ComputerName -Quiet -Count 1)){
-            Write-Error -Message "Unable to contact $ComputerName. Please verify its network connectivity and try again." -Category ObjectNotFound -TargetObject $ComputerName
+        If(!(Test-Connection $Name -Quiet -Count 1)){
+            Write-Error -Message "Unable to contact $Name. Please verify its network connectivity and try again." -Category ObjectNotFound -TargetObject $Name
             Return
         }
         If([bool](([System.Security.Principal.WindowsIdentity]::GetCurrent()).groups -match "S-1-5-32-544")){ #check if user is admin, otherwise no registry work can be done
             #the following registry key is necessary to avoid the error 5 access is denied error
             $LMtype = [Microsoft.Win32.RegistryHive]::LocalMachine
             $LMkey = "SYSTEM\CurrentControlSet\Control\Terminal Server"
-            $LMRegKey = [Microsoft.Win32.RegistryKey]::OpenRemoteBaseKey($LMtype,$ComputerName)
+            $LMRegKey = [Microsoft.Win32.RegistryKey]::OpenRemoteBaseKey($LMtype,$Name)
             $regKey = $LMRegKey.OpenSubKey($LMkey,$true)
             If($regKey.GetValue("AllowRemoteRPC") -ne 1){
                 $regKey.SetValue("AllowRemoteRPC",1)
@@ -61,14 +62,14 @@ Function Get-ActiveSessions{
             $regKey.Dispose()
             $LMRegKey.Dispose()
         }
-        $result = qwinsta /server:$ComputerName
+        $result = qwinsta /server:$Name
         If($result){
             ForEach($line in $result[1..$result.count]){ #avoiding the line 0, don't want the headers
                 $tmp = $line.split(" ") | ?{$_.length -gt 0}
                 If(($line[19] -ne " ")){ #username starts at char 19
                     If($line[48] -eq "A"){ #means the session is active ("A" for active)
                         $return += New-Object PSObject -Property @{
-                            "ComputerName" = $ComputerName
+                            "ComputerName" = $Name
                             "SessionName" = $tmp[0]
                             "UserName" = $tmp[1]
                             "ID" = $tmp[2]
@@ -77,7 +78,7 @@ Function Get-ActiveSessions{
                         }
                     }Else{
                         $return += New-Object PSObject -Property @{
-                            "ComputerName" = $ComputerName
+                            "ComputerName" = $Name
                             "SessionName" = $null
                             "UserName" = $tmp[0]
                             "ID" = $tmp[1]
