@@ -48,7 +48,7 @@ Function Get-ActiveSessions{
 			Write-Error -Message "Unable to contact $ComputerName. Please verify its network connectivity and try again." -Category ObjectNotFound -TargetObject $ComputerName
 			Return
 		}
-		If([bool](([System.Security.Principal.WindowsIdentity]::GetCurrent()).groups -match "S-1-5-32-544")){
+		If([bool](([System.Security.Principal.WindowsIdentity]::GetCurrent()).groups -match "S-1-5-32-544")){ #check if user is admin, otherwise no registry work can be done
 			#the following registry key is necessary to avoid the error 5 access is denied error
 			$LMtype = [Microsoft.Win32.RegistryHive]::LocalMachine
 			$LMkey = "SYSTEM\CurrentControlSet\Control\Terminal Server"
