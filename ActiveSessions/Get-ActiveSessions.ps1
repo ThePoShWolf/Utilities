@@ -10,7 +10,7 @@
 
     Returns all users logged onto PC1 as well as pointing out which one is actually active.
 .EXAMPLE
-    Get-ADComputer -filter 'name -like "IT*"' | select name | Get-ActiveSessions
+    Get-ADComputer -filter 'name -like "IT*"' | Get-ActiveSessions
 
     This will go through each and every computer that has a name like "IT*" and return the users that are logged into it.
 .INPUTS
