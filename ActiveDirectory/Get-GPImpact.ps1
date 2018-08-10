@@ -1,8 +1,7 @@
 ﻿Function Get-GPImpact
 {
     [cmdletbinding()]
-    Param
-    (
+    Param(
         [Parameter(ParameterSetName="Name",Mandatory="True")]
         [string]$Name
         ,
@@ -10,18 +9,13 @@
         [string]$ID
     )
     Begin{}
-    Process
-    {
-        Switch ($psCmdlet.ParameterSetName)
-        {
+    Process{
+        Switch ($psCmdlet.ParameterSetName){
             "Name" {
                 Write-Verbose "using name"
-                Try
-                {
+                Try{
                     $gpo = Get-GPO -Name $Name
-                }
-                Catch
-                {
+                }Catch{
                     Write-Error $error[0]
                     Return
                 }
@@ -30,12 +24,9 @@
             }
             "ID" {
                 Write-Verbose "using id"
-                Try
-                {
+                Try{
                     $gpo = Get-GPO -Id $ID
-                }
-                Catch
-                {
+                }Catch{
                     Write-Error $error[0]
                     Return
                 }
@@ -43,36 +34,48 @@
                 Write-Verbose "Scope: $($scope.trustee.name)"
             }
         }
-        $ous = Get-ADOrganizationalUnit -Filter * -Properties gplink | ?{$_.gplink -like "*$($gpo.id)*"}
-        If((Get-ADDomain).LinkedGroupPolicyObjects -like "*$($gpo.id)*")
-        {
+        $ous = Get-ADOrganizationalUnit -Filter * -Properties gplink | Where-Object {$_.gplink -like "*$($gpo.id)*"}
+        If((Get-ADDomain).LinkedGroupPolicyObjects -like "*$($gpo.id)*"){
             $ous += (Get-ADDomain).DistinguishedName
         }
-        If($ous)
-        {
-            If($scope.Trustee.Name -contains "Authenticated Users")
-            {
-                Write-Verbose "Authenticated Users"
-                ForEach($ou in $ous)
-                {
-                    Write-Verbose $ou.distinguishedname
-                    Get-ADObject -SearchBase $ou.distinguishedname -Filter * | ?{@("user","computer") -contains $_.objectclass} | Select Name,ObjectClass
-                }
+        If($ous){
+            ForEach($OU in $OUs){
+                Write-Verbose "OU: $(OU.Name)"
             }
-            ElseIf($scope.Trustee)
-            {
-                Write-Verbose "Custom Groups"
-                $groupMembers = @()
-                ForEach($group in ($scope | ?{$_.Trustee.SidType -eq "Group"}))
-                {
-                    Write-Verbose "Group: $($group.trustee.name)"
-                    $groupMembers += Get-ADGroupMember $group.Trustee.Name
-                }
-                $groupMembers = $groupMembers | Select -Unique
-                Foreach($ou in $ous)
-                {
-                    Write-Verbose $ou.DistinguishedName
-                    Get-ADObject -SearchBase $ou.DistinguishedName -Filter * | ?{@("user","computer") -contains $_.objectclass} | ?{$groupMembers.Name -contains $_.name} | select Name,ObjectClass
+            If($scope.Trustee){
+                If($scope.Trustee.Name -contains "Authenticated Users"){
+                    Write-Verbose "Authenticated Users"
+                    ForEach($ou in $ous){
+                        Write-Verbose $ou.distinguishedname
+                        Get-ADObject -SearchBase $ou.distinguishedname -Filter * | Where-Object {@("user","computer") -contains $_.objectclass} | Select Name,ObjectClass
+                    }
+                }Else{
+                    Write-Verbose "Groups"
+                    $groupMembers = @()
+                    #Get group members within scope
+                    ForEach($Group in ($scope | Where-Object {$_.Trustee.SidType -eq "Group"})){
+                        $groupMembers += Get-ADGroupMember $group.Trustee.Name 
+                    }
+                    $groupMembers = $groupMembers | Select-Object -Unique
+                    #Find members the GPO applies to
+                    If($groupMembers){
+                        Write-Verbose "GroupMember count: $($groupMembers.count)"
+                        Foreach($OU in $OUs){
+                            Get-ADObject -SearchBase $ou.DistinguishedName -Filter * | Where-Object {@("user","computer") -contains $_.objectclass} | Where-Object {$groupMembers.Name -contains $_.name} | Select-Object Name,ObjectClass
+                        }
+                    }
+                    #Find all users and computers explicitly within scope
+                    Write-Verbose "Users"
+                    ForEach($object in ($scope | Where-Object {@("user","computer") -contains $_.Trustee.SidType})){
+                        Write-Verbose $Object.Trustee.Name
+                        Switch($object.Trustee.SidType){
+                            "User" {$object = Get-ADUser $object.Trustee.Name}
+                            "Computer" {$object = Get-ADComputer $object.Trustee.Name}
+                        }
+                        If($OUs.DistinguishedName -contains ($object.distinguishedname -creplace "^[^,]*,","")){
+                            Get-ADObject $object.distinguishedname
+                        }
+                    }
                 }
             }Else{
                 Write-Error "GPO has no scope."
