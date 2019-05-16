@@ -1,81 +1,53 @@
-<#
-.SYNOPSIS
-Converts bytes to a more readable KB, MB, GB, or TB
-.DESCRIPTION
-Format-Bytes takes a bytes sized input and formats it to be KB, MB, GB, or TB depending on its size.
-.PARAMETER $Num
-The number to convert to KB, MB, GB, or TB.
-.EXAMPLE
-Format-Bytes 123456789
-
-Output: 117.74 MB
-.EXAMPLE
-$x = (123456,456789456,789456123456)
-$x | Format-Bytes
-
-Output: 
-120.56 KB
-435.63 MB
-735.24 GB
-.INPUTS
-A number of any type.
-.OUTPUTS
-A number converted to a string with it's type identifier.
-.NOTES
-Author: Town of An
-.LINK
-KB
-MB
-GB
-TB
-#>
-Function Format-Bytes
-{
-	Param
-	(
-		[Parameter(ValueFromPipeline=$true,Mandatory=$true)]
-		[float[]]$number
-	)
-	Begin
-	{
-		
-	}
-	Process
-	{
-		ForEach($num in $number)
-		{
-			If($num -lt 1KB)
-			{
-				Return "$num B"
-			}
-			If($num -lt 1MB)
-			{
-				$num = $num/1KB
-				$num = "{0:N2}" -f $num
-				Return "$num KB"
-			}
-			If($num -lt 1GB)
-			{
-				$num = $num/1MB
-				$num = "{0:N2}" -f $num
-				Return "$num MB"
-			}
-			If($num -lt 1TB)
-			{
-				$num = $num/1GB
-				$num = "{0:N2}" -f $num
-				Return "$num GB"
-			}
-			Else
-			{
-				$num = $num/1TB
-				$num = "{0:N2}" -f $num
-				Return "$num TB"
-			}
-		}
-	}
-	End
-	{
-		
-	}
+Function Format-Bytes {
+    Param
+    (
+        [Parameter(
+            ValueFromPipeline = $true
+        )]
+        [ValidateNotNullOrEmpty()]
+        [float]$number
+    )
+    Begin{
+        $sizes = 'KB','MB','GB','TB','PB'
+    }
+    Process {
+        # New for loop
+        for($x = 0;$x -lt $sizes.count; $x++){
+            if ($number -lt [int64]"1$($sizes[$x])"){
+                if ($x -eq 0){
+                    return "$number B"
+                } else {
+                    $num = $number / [int64]"1$($sizes[$x-1])"
+                    $num = "{0:N2}" -f $num
+                    return "$num $($sizes[$x-1])"
+                }
+            }
+        }
+        <# Original way
+        if ($number -lt 1KB) {
+            "$number B"
+        } elseif ($number -lt 1MB) {
+            $number = $number / 1KB
+            $number = "{0:N2}" -f $number
+            "$number KB"
+        } elseif ($number -lt 1GB) {
+            $number = $number / 1MB
+            $number = "{0:N2}" -f $number
+            "$number MB"
+        } elseif ($number -lt 1TB) {
+            $number = $number / 1GB
+            $number = "{0:N2}" -f $number
+            "$number GB"
+        } elseif ($number -lt 1PB) {
+            $number = $number / 1TB
+            $number = "{0:N2}" -f $number
+            "$number TB"
+        } else {
+            $number = $number / 1PB
+            $number = "{0:N2}" -f $number
+            "$number PB"
+        }
+        #>
+    }
+    End{}
 }
