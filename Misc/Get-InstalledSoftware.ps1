@@ -45,19 +45,19 @@ Function Get-InstalledSoftware {
         $cuReg = [Microsoft.Win32.RegistryHive]::CurrentUser
     }
     Process{
-        if (!(Test-Connection -ComputerName $Computer -count 1 -quiet)) {
-            Write-Error -Message "Unable to contact $Computer. Please verify its network connectivity and try again." -Category ObjectNotFound -TargetObject $Computer
+        if (!(Test-Connection -ComputerName $Name -count 1 -quiet)) {
+            Write-Error -Message "Unable to contact $Name. Please verify its network connectivity and try again." -Category ObjectNotFound -TargetObject $Computer
             Break
         }
         $masterKeys = @()
-        $remoteCURegKey = [Microsoft.Win32.RegistryKey]::OpenRemoteBaseKey($cuReg,$computer)
-        $remoteLMRegKey = [Microsoft.Win32.RegistryKey]::OpenRemoteBaseKey($lmReg,$computer)
+        $remoteCURegKey = [Microsoft.Win32.RegistryKey]::OpenRemoteBaseKey($cuReg,$Name)
+        $remoteLMRegKey = [Microsoft.Win32.RegistryKey]::OpenRemoteBaseKey($lmReg,$Name)
         foreach ($key in $lmKeys) {
             $regKey = $remoteLMRegKey.OpenSubkey($key)
             foreach ($subName in $regKey.GetSubkeyNames()) {
                 foreach($sub in $regKey.OpenSubkey($subName)) {
                     $masterKeys += (New-Object PSObject -Property @{
-                        "ComputerName" = $Computer
+                        "ComputerName" = $Name
                         "Name" = $sub.GetValue("displayname")
                         "SystemComponent" = $sub.GetValue("systemcomponent")
                         "ParentKeyName" = $sub.GetValue("parentkeyname")
