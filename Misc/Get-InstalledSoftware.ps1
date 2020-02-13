@@ -35,7 +35,7 @@
 Function Get-InstalledSoftware {
     Param(
         [Alias('Computer','ComputerName','HostName')]
-        [Parameter(ValueFromPipeline=$True,ValueFromPipelineByPropertyName=$true,Mandatory=$true,Position=1)]
+        [Parameter(ValueFromPipeline=$True,ValueFromPipelineByPropertyName=$true,Mandatory=$false,Position=1)]
         [string[]]$Name = $env:COMPUTERNAME
     )
     Begin{
